@@ -12,6 +12,7 @@ namespace NavigationGame
     using Microsoft.Xna.Framework.Media;
     using System.Threading;
     using SharedLibrary;
+    using System.Diagnostics;
 
     /// <summary>
     /// This is the main type for your game
@@ -36,10 +37,11 @@ namespace NavigationGame
 
         //Client's Current Location
         Vector2 fClientCurrentLocation = new Vector2();
+        float fClientCurrentRotation = 0.0f;
         List<Location> fClientsVectors = new List<Location>();
 
         //Remote Clients to Draw basically
-        List<Vector2> fVectorsToDraw = new List<Vector2>();
+        List<Location> fLocationsToDraw = new List<Location>();
 
 
         //Sync lock
@@ -141,26 +143,33 @@ namespace NavigationGame
             KeyboardState keyState = Keyboard.GetState();
             var vRateMultiplier = 2;
 
-            if (keyState.IsKeyDown(Keys.W) || keyState.IsKeyDown(Keys.Up) )
-            {
-                fClientCurrentLocation.Y -= 1 * vRateMultiplier;
-            }
-            if (keyState.IsKeyDown(Keys.S) || keyState.IsKeyDown(Keys.Down))
-            {
-                fClientCurrentLocation.Y += 1 * vRateMultiplier;
-            }
 
+            //Change Directions
             if (keyState.IsKeyDown(Keys.A) || keyState.IsKeyDown(Keys.Left))
             {
-                fClientCurrentLocation.X -= 1 * vRateMultiplier;
+                fClientCurrentRotation -= (float)(1.5f * vRateMultiplier / (180 / Math.PI));
             }
             if (keyState.IsKeyDown(Keys.D) || keyState.IsKeyDown(Keys.Right))
             {
-                fClientCurrentLocation.X += 1 * vRateMultiplier;
+                fClientCurrentRotation += (float)(1.5f * vRateMultiplier / (180 / Math.PI));
             }
             if (keyState.IsKeyDown(Keys.Space))
             {
-                fClientCurrentLocation.X = fClientCurrentLocation.Y = 0;
+                fClientCurrentLocation.X = fGraphicsDeviceManager.GraphicsDevice.Viewport.Width / 2;
+                fClientCurrentLocation.Y = fGraphicsDeviceManager.GraphicsDevice.Viewport.Height / 2; ;
+                fClientCurrentRotation = 0.0f;
+            }
+
+            //Move Forward and Backward
+            if (keyState.IsKeyDown(Keys.W) || keyState.IsKeyDown(Keys.Up))
+            {
+                fClientCurrentLocation.Y -= (1 * (float)Math.Cos(Convert.ToDouble(fClientCurrentRotation)));
+                fClientCurrentLocation.X += (1 * (float)Math.Sin(Convert.ToDouble(fClientCurrentRotation)));
+            }
+            if (keyState.IsKeyDown(Keys.S) || keyState.IsKeyDown(Keys.Down))
+            {
+                fClientCurrentLocation.Y += (1 * (float)Math.Cos(Convert.ToDouble(fClientCurrentRotation)));
+                fClientCurrentLocation.X -= (1 * (float)Math.Sin(Convert.ToDouble(fClientCurrentRotation)));
             }
 
             lock (fLock)
@@ -168,16 +177,16 @@ namespace NavigationGame
                 if (fClientsVectors.Count == 0 || 
                     (fClientsVectors.Count > 0 && (fClientsVectors[fClientsVectors.Count - 1].X != fClientCurrentLocation.X || fClientsVectors[fClientsVectors.Count - 1].Y != fClientCurrentLocation.Y) ) )
                 {
-                    fClientsVectors.Add(new Location { X = fClientCurrentLocation.X, Y = fClientCurrentLocation.Y, Timestamp = DateTime.Now });
+                    fClientsVectors.Add(new Location { X = fClientCurrentLocation.X, Y = fClientCurrentLocation.Y, Direction=fClientCurrentRotation, Timestamp = DateTime.Now });
                 }
             }
 
-            fVectorsToDraw.Clear();
+            fLocationsToDraw.Clear();
             foreach (ClientDetails vGameObject in fRemoteClients.Values)
             {
                 if (vGameObject.Locations.Count > 0)
                 {
-                    fVectorsToDraw.Add(new Vector2(vGameObject.Locations[0].X, vGameObject.Locations[0].Y));
+                    fLocationsToDraw.Add(vGameObject.Locations[0]);
                     if (vGameObject.Locations.Count > 1)
                     {
                         vGameObject.Locations.RemoveAt(0);
@@ -208,18 +217,25 @@ namespace NavigationGame
             // TODO: Add your drawing code here
             fSpriteBatch.Begin(SpriteSortMode.BackToFront, BlendState.AlphaBlend);
 
-            //Draw Client
-            fSpriteBatch.Draw(fTriangleTexture, fClientCurrentLocation, Color.White);
+
+            Vector2 vOrigin = new Vector2();
+            vOrigin.X = fTriangleTexture.Width / 2;
+            vOrigin.Y = fTriangleTexture.Height / 2;
+
+            fSpriteBatch.Draw(fTriangleTexture, fClientCurrentLocation, null, Color.White, fClientCurrentRotation, vOrigin, 1.0f, SpriteEffects.None, 0f);
 
             //Draw Remote Clients
-            foreach (Vector2 vVector in fVectorsToDraw)
+            foreach (Location vLocation in fLocationsToDraw)
             {
-                fSpriteBatch.Draw(fTriangleTexture, vVector, Color.White);
+                //fSpriteBatch.Draw(fTriangleTexture, vLocation, Color.White);
+                fSpriteBatch.Draw(fTriangleTexture, new Vector2 { X = vLocation.X, Y = vLocation.Y }, null, Color.White, vLocation.Direction, vOrigin, 1.0f, SpriteEffects.None, 0f);
+                fSpriteBatch.DrawString(fBasicFont, "A: " + vLocation.Direction, new Vector2(vLocation.X, vLocation.Y), Color.Black);
             }
 
             //Draw some debug information
             fSpriteBatch.DrawString(fBasicFont, "Clients=" + fRemoteClients.Count + " Cord Count: " + fClientsVectors.Count + " Max Count: " + fMaxCount, new Vector2(300.0f, 300.0f), Color.Black);
             fSpriteBatch.DrawString(fBasicFont, "FPS: " + fStaticFPS, new Vector2(300.0f, 410.0f), Color.Black);
+            fSpriteBatch.DrawString(fBasicFont, "You: X=" + fClientCurrentLocation.X + ", Y=" + fClientCurrentLocation.Y + "   Angle=" + fClientCurrentRotation, new Vector2(300.0f, 430.0f), Color.Black);
 
             fSpriteBatch.End();
             base.Draw(gameTime);
