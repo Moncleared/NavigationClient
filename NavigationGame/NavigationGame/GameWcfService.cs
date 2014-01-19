@@ -33,6 +33,9 @@ public interface IGameWcfServiceCallback
     [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IGameWcfService/UpdateClient")]
     void UpdateClient(SharedLibrary.ClientDetails pClientDetails);
     
+    [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IGameWcfService/ClientDisconnected")]
+    void ClientDisconnected(SharedLibrary.ClientDetails pClientDetails);
+    
     [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IGameWcfService/IsClientAlive", ReplyAction="http://tempuri.org/IGameWcfService/IsClientAliveResponse")]
     bool IsClientAlive();
 }

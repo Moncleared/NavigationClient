@@ -38,13 +38,19 @@ namespace NavigationGame
                 fClient.SendClientDetails(fClientToken, fClientDetails);
             }
         }
+
+        public void Disconnect()
+        {
+            fClient.UnregisterClient(fClientToken);
+            fClient.Close();
+        }
     }
     public class CallbackHandler : IGameWcfServiceCallback
     {
-        private Dictionary<int, ClientDetails> fGameObjects;
+        private Dictionary<int, ClientDetails> fRemoteClients;
         public CallbackHandler(Dictionary<int, ClientDetails> pGameObjects)
         {
-            fGameObjects = pGameObjects;
+            fRemoteClients = pGameObjects;
         }
         public void ServerSays(string pServerString)
         {
@@ -57,13 +63,21 @@ namespace NavigationGame
 
         public void UpdateClient(ClientDetails pClientDetails)
         {
-            if (fGameObjects.ContainsKey(pClientDetails.Id))
+            if (fRemoteClients.ContainsKey(pClientDetails.Id))
             {
-                fGameObjects[pClientDetails.Id].Locations.AddRange(pClientDetails.Locations);
+                fRemoteClients[pClientDetails.Id].Locations.AddRange(pClientDetails.Locations);
             }
             else
             {
-                fGameObjects.Add(pClientDetails.Id, pClientDetails);
+                fRemoteClients.Add(pClientDetails.Id, pClientDetails);
+            }
+        }
+
+        public void ClientDisconnected(SharedLibrary.ClientDetails pClientDetails)
+        {
+            if (fRemoteClients.ContainsKey(pClientDetails.Id))
+            {
+                fRemoteClients.Remove(pClientDetails.Id);
             }
         }
     }
